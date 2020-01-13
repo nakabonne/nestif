@@ -3,6 +3,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package nestif provides an API to detect deeply nested if statements.
 package nestif
 
 import (
@@ -15,17 +16,19 @@ import (
 
 // Issue represents an issue of root if statement that has nested ifs.
 type Issue struct {
-	Pos       token.Position
-	Comlexity int
+	Pos        token.Position
+	Complexity int
 	// Condition string such as "if a == b".
 	Condition string
 }
 
+// Message makes a message with its own source position.
 func (i *Issue) Message() string {
-	msg := fmt.Sprintf("%s has nested if statements (complexity: %d)", i.Condition, i.Comlexity)
+	msg := fmt.Sprintf("%s has nested if statements (complexity: %d)", i.Condition, i.Complexity)
 	return errformat(i.Pos.Filename, i.Pos.Line, i.Pos.Column, msg)
 }
 
+// Checker represents a checker that finds nested if statements.
 type Checker struct {
 	// Minimum complexity to report.
 	MinComplexity int
@@ -83,9 +86,9 @@ func (c *Checker) checkIf(stmt *ast.IfStmt, fset *token.FileSet) *Issue {
 	}
 
 	return &Issue{
-		Pos:       fset.Position(stmt.Pos()),
-		Condition: "if statement", // TODO: Use condition such as "if a == b".
-		Comlexity: v.complexity,
+		Pos:        fset.Position(stmt.Pos()),
+		Condition:  "if statement", // TODO: Use condition such as "if a == b".
+		Complexity: v.complexity,
 	}
 }
 

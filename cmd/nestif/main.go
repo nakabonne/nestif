@@ -13,6 +13,7 @@ import (
 	"go/token"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/nakabonne/nestif"
@@ -25,7 +26,7 @@ var (
 	outJSON       = flagSet.Bool("json", false, "emit json format")
 	minComplexity = flagSet.Int("min", 1, "minimum complexity to show")
 	top           = flagSet.Int("top", 10, "show only the top N highest scoring if statements")
-	sort          = flagSet.Bool("sort", false, "sort in descending order of complexity")
+	sortIssue     = flagSet.Bool("sort", false, "sort in descending order of complexity")
 	ignoreIfErr   = flagSet.Bool("ignore-err", false, `ignore to check "if err != nil"`)
 
 	usage = func() {
@@ -55,17 +56,23 @@ func main() {
 	for _, path := range flagSet.Args() {
 		if isDir(path) {
 			// TODO: Support directories as args.
-		} else {
-			is, err := analyze(checker, path)
-			if err != nil {
-				if *verbose {
-					fmt.Println(err)
-				}
-				continue
-			}
-			issues = append(issues, is...)
+			continue
 		}
+		is, err := analyze(checker, path)
+		if err != nil {
+			if *verbose {
+				fmt.Println(err)
+			}
+			continue
+		}
+		issues = append(issues, is...)
 	}
+	if *sortIssue {
+		sort.Slice(issues, func(i, j int) bool {
+			return issues[i].Complexity > issues[j].Complexity
+		})
+	}
+	// TODO: Implement top.
 
 	if *outJSON {
 		js, err := json.Marshal(issues)
@@ -76,7 +83,6 @@ func main() {
 		fmt.Println(string(js))
 		return
 	}
-	// TODO: Implement top and sort.
 	for _, i := range issues {
 		fmt.Println(i.Message())
 	}
