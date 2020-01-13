@@ -15,11 +15,11 @@ import (
 
 var (
 	flagSet = flag.NewFlagSet("nestif", flag.ContinueOnError)
-	verbose = flagSet.Bool("v", false, "Verbose output")
-	outJSON = flagSet.Bool("json", false, "Emit json format")
-	// TODO: Write description.
-	depth       = flagSet.Int("depth", 2, "")
-	ignoreIfErr = flagSet.Bool("ignore-err", false, "Ignore the checks if err != nil")
+
+	verbose     = flagSet.Bool("v", false, "Verbose output")
+	outJSON     = flagSet.Bool("json", false, "Emit json format")
+	minDepth    = flagSet.Int("min-depth", 1, "Lower limit of nesting depth you want to check")
+	ignoreIfErr = flagSet.Bool("ignore-err", false, `Ignore to check "if err != nil"`)
 
 	usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: nestif [<flag> ...] <Go file or directory> ...")
@@ -37,12 +37,13 @@ func main() {
 	}
 
 	checker := &nestif.Checker{
-		Depth:       *depth,
+		MinDepth:    *minDepth,
 		IgnoreIfErr: *ignoreIfErr,
 	}
 	if *verbose {
 		checker.DebugMode()
 	}
+	// TODO: Support the "..." glob operator and be sure to run as a "..." when no args given.
 	var issues []nestif.Issue
 	for _, path := range flagSet.Args() {
 		if isDir(path) {
@@ -69,7 +70,7 @@ func main() {
 		return
 	}
 	for _, i := range issues {
-		fmt.Printf("%s:%d:%d: %s", i.Pos.Filename, i.Pos.Line, i.Pos.Column, i.Message())
+		fmt.Printf("%s:%d:%d: %s\n", i.Pos.Filename, i.Pos.Line, i.Pos.Column, i.Message())
 	}
 }
 

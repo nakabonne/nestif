@@ -26,8 +26,9 @@ func (i *Issue) Message() string {
 }
 
 type Checker struct {
-	Depth int
-	// Ignore the checks "if err != nil"
+	// Lower limit of nesting depth to check.
+	MinDepth int
+	// Ignore to check "if err != nil".
 	IgnoreIfErr bool
 
 	// For debug mode.
@@ -37,12 +38,36 @@ type Checker struct {
 // Check detects deeply nested if statements.
 func (c *Checker) Check(f *ast.File, fset *token.FileSet) []Issue {
 	var issues []Issue
-	for _, decl := range f.Decls {
-		if fn, ok := decl.(*ast.FuncDecl); ok {
-			// TODO: Check if nested if statement exists.
-			fmt.Println(fn)
+	ast.Inspect(f, func(n ast.Node) bool {
+		dec, ok := n.(*ast.FuncDecl)
+		if !ok || dec.Body == nil {
+			return true
 		}
-	}
+
+		for _, stmt := range dec.Body.List {
+			ast.Inspect(stmt, func(n ast.Node) bool {
+				if n, ok := n.(*ast.IfStmt); ok {
+					count := 0
+					ast.Inspect(n.Body, func(n ast.Node) bool {
+						if _, ok := n.(*ast.IfStmt); ok {
+							count++
+						}
+						return true
+					})
+					if count > 0 {
+						issues = append(issues, Issue{
+							Pos:   fset.Position(n.Pos()),
+							Depth: count,
+						})
+					}
+					return false
+				}
+				return true
+			})
+		}
+
+		return true
+	})
 	return issues
 }
 

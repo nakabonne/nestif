@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-cmd/nestif/nestif
+nestif
 
 # Test binary, built with `go test -c`
 *.test
