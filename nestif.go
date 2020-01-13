@@ -13,16 +13,16 @@ import (
 	"os"
 )
 
-// Issue represents a root if statement that has nested ifs.
+// Issue represents an issue of root if statement that has nested ifs.
 type Issue struct {
-	Pos token.Position
+	Pos   token.Position
+	Score int
 	// Condition string such as "if a == b".
 	Condition string
-	Score     int
 }
 
 func (i *Issue) Message() string {
-	msg := fmt.Sprintf("%s has deeply nested if statements (score: %d)", i.Condition, i.Score)
+	msg := fmt.Sprintf("%s has nested if statements (score: %d)", i.Condition, i.Score)
 	return errformat(i.Pos.Filename, i.Pos.Line, i.Pos.Column, msg)
 }
 
@@ -76,38 +76,40 @@ func (c *Checker) checkFunc(stmt *ast.Stmt, fset *token.FileSet) (issues []Issue
 
 // checkIf inspects a if statement and return an Issue.
 func (c *Checker) checkIf(stmt *ast.IfStmt, fset *token.FileSet) *Issue {
-	var (
-		score     int
-		nesting   int
-		inspector = func(n ast.Node) bool {
-			if _, ok := n.(*ast.IfStmt); ok {
-				// TODO: Ignore "if err != nil"
-				// TODO: Reset nesting once terminating depth-first search.
-				nesting++
-				score += nesting
-			}
-			c.debug("nesting: %d\n", nesting)
-			return true
-		}
-	)
-
-	ast.Inspect(stmt.Body, inspector)
-	nesting = 0
-	if _, ok := stmt.Else.(*ast.BlockStmt); ok {
-		ast.Inspect(stmt.Else, inspector)
-	} else if _, ok := stmt.Else.(*ast.IfStmt); ok {
-		ast.Inspect(stmt.Else, inspector)
-	}
-
-	if score < c.MinScore {
+	v := &visitor{}
+	ast.Walk(v, stmt)
+	if v.score < c.MinScore {
 		return nil
 	}
 
 	return &Issue{
 		Pos:       fset.Position(stmt.Pos()),
 		Condition: "if statement", // TODO: Use condition such as "if a == b".
-		Score:     score,
+		Score:     v.score,
 	}
+}
+
+type visitor struct {
+	score   int
+	nesting int
+}
+
+func (v *visitor) Visit(n ast.Node) ast.Visitor {
+	ifStmt, ok := n.(*ast.IfStmt)
+	if !ok {
+		return v
+	}
+
+	v.score += v.nesting
+	v.nesting++
+	// TODO: Ignore "if err != nil"
+	ast.Walk(v, ifStmt.Body)
+	if ifStmt.Else != nil {
+		ast.Walk(v, ifStmt.Else)
+	}
+	v.nesting--
+
+	return nil
 }
 
 // DebugMode makes it possible to emit debug logs.
