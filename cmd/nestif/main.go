@@ -21,10 +21,10 @@ import (
 var (
 	flagSet = flag.NewFlagSet("nestif", flag.ContinueOnError)
 
-	verbose     = flagSet.Bool("v", false, "Verbose output")
-	outJSON     = flagSet.Bool("json", false, "Emit json format")
-	minDepth    = flagSet.Int("min-depth", 1, "Lower limit of nesting depth you want to check")
-	ignoreIfErr = flagSet.Bool("ignore-err", false, `Ignore to check "if err != nil"`)
+	verbose     = flagSet.Bool("v", false, "verbose output")
+	outJSON     = flagSet.Bool("json", false, "emit json format")
+	minScore    = flagSet.Int("min-score", 1, "minimum score to print it")
+	ignoreIfErr = flagSet.Bool("ignore-err", false, `ignore to check "if err != nil"`)
 
 	usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: nestif [<flag> ...] <Go file or directory> ...")
@@ -42,7 +42,7 @@ func main() {
 	}
 
 	checker := &nestif.Checker{
-		MinDepth:    *minDepth,
+		MinScore:    *minScore,
 		IgnoreIfErr: *ignoreIfErr,
 	}
 	if *verbose {
@@ -75,7 +75,7 @@ func main() {
 		return
 	}
 	for _, i := range issues {
-		fmt.Printf("%s:%d:%d: %s\n", i.Pos.Filename, i.Pos.Line, i.Pos.Column, i.Message())
+		fmt.Println(i.Message())
 	}
 }
 
