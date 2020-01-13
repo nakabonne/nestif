@@ -7,19 +7,19 @@ var (
 )
 
 func _() {
-	if b1 { // score: 0
+	if b1 { // complexity: 0
 	}
 }
 
 func _() {
-	if b1 { // score: 1
+	if b1 { // complexity: 1
 		if b2 { // +1
 		}
 	}
 }
 
 func _() {
-	if b1 { // score: 6
+	if b1 { // complexity: 6
 		if b2 { // +1
 			if b3 { // +2
 			}
@@ -32,7 +32,7 @@ func _() {
 	}
 }
 
-func _() { // score: 3
+func _() { // complexity: 3
 	if b1 {
 		if b2 { // +1
 		} else {

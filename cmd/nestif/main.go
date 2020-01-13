@@ -21,10 +21,12 @@ import (
 var (
 	flagSet = flag.NewFlagSet("nestif", flag.ContinueOnError)
 
-	verbose     = flagSet.Bool("v", false, "verbose output")
-	outJSON     = flagSet.Bool("json", false, "emit json format")
-	minScore    = flagSet.Int("min-score", 1, "minimum score to print it")
-	ignoreIfErr = flagSet.Bool("ignore-err", false, `ignore to check "if err != nil"`)
+	verbose       = flagSet.Bool("v", false, "verbose output")
+	outJSON       = flagSet.Bool("json", false, "emit json format")
+	minComplexity = flagSet.Int("min", 1, "minimum complexity to show")
+	top           = flagSet.Int("top", 10, "show only the top N highest scoring if statements")
+	sort          = flagSet.Bool("sort", false, "sort in descending order of complexity")
+	ignoreIfErr   = flagSet.Bool("ignore-err", false, `ignore to check "if err != nil"`)
 
 	usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: nestif [<flag> ...] <Go file or directory> ...")
@@ -42,8 +44,8 @@ func main() {
 	}
 
 	checker := &nestif.Checker{
-		MinScore:    *minScore,
-		IgnoreIfErr: *ignoreIfErr,
+		MinComplexity: *minComplexity,
+		IgnoreIfErr:   *ignoreIfErr,
 	}
 	if *verbose {
 		checker.DebugMode()
@@ -74,6 +76,7 @@ func main() {
 		fmt.Println(string(js))
 		return
 	}
+	// TODO: Implement top and sort.
 	for _, i := range issues {
 		fmt.Println(i.Message())
 	}

@@ -15,20 +15,20 @@ import (
 
 // Issue represents an issue of root if statement that has nested ifs.
 type Issue struct {
-	Pos   token.Position
-	Score int
+	Pos       token.Position
+	Comlexity int
 	// Condition string such as "if a == b".
 	Condition string
 }
 
 func (i *Issue) Message() string {
-	msg := fmt.Sprintf("%s has nested if statements (score: %d)", i.Condition, i.Score)
+	msg := fmt.Sprintf("%s has nested if statements (complexity: %d)", i.Condition, i.Comlexity)
 	return errformat(i.Pos.Filename, i.Pos.Line, i.Pos.Column, msg)
 }
 
 type Checker struct {
-	// Minimum score to report.
-	MinScore int
+	// Minimum complexity to report.
+	MinComplexity int
 	// Ignore to check "if err != nil".
 	IgnoreIfErr bool
 
@@ -78,20 +78,20 @@ func (c *Checker) checkFunc(stmt *ast.Stmt, fset *token.FileSet) (issues []Issue
 func (c *Checker) checkIf(stmt *ast.IfStmt, fset *token.FileSet) *Issue {
 	v := &visitor{}
 	ast.Walk(v, stmt)
-	if v.score < c.MinScore {
+	if v.complexity < c.MinComplexity {
 		return nil
 	}
 
 	return &Issue{
 		Pos:       fset.Position(stmt.Pos()),
 		Condition: "if statement", // TODO: Use condition such as "if a == b".
-		Score:     v.score,
+		Comlexity: v.complexity,
 	}
 }
 
 type visitor struct {
-	score   int
-	nesting int
+	complexity int
+	nesting    int
 }
 
 func (v *visitor) Visit(n ast.Node) ast.Visitor {
@@ -100,7 +100,7 @@ func (v *visitor) Visit(n ast.Node) ast.Visitor {
 		return v
 	}
 
-	v.score += v.nesting
+	v.complexity += v.nesting
 	v.nesting++
 	// TODO: Ignore "if err != nil"
 	ast.Walk(v, ifStmt.Body)
