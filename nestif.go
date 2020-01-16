@@ -97,6 +97,7 @@ type visitor struct {
 	nesting    int
 }
 
+// Visit traverses an AST in depth-first order.
 func (v *visitor) Visit(n ast.Node) ast.Visitor {
 	ifStmt, ok := n.(*ast.IfStmt)
 	if !ok {
