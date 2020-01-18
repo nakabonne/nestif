@@ -9,7 +9,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"go/build"
@@ -84,7 +83,7 @@ func check() (issues []nestif.Issue, err error) {
 		checker.DebugMode()
 	}
 
-	// TODO: Improve performance.
+	// TODO: Reduce allocation.
 	var files, dirs, pkgs []string
 	for _, arg := range flagSet.Args() {
 		if strings.HasSuffix(arg, "/...") && isDir(arg[:len(arg)-len("/...")]) {
@@ -96,11 +95,10 @@ func check() (issues []nestif.Issue, err error) {
 		} else {
 			pkgs = append(pkgs, arg)
 		}
-
 	}
+	// Check all files recursively when no args given.
 	if len(files) == 0 && len(dirs) == 0 && len(pkgs) == 0 {
-		err = errors.New("")
-		return
+		dirs = append(dirs, allPackagesInFS("./...")...)
 	}
 	for _, f := range files {
 		is, err := checkFile(checker, f)
@@ -197,7 +195,7 @@ func checkImportedPackage(checker *nestif.Checker, pkg *build.Package) (issues [
 	files = append(files, pkg.GoFiles...)
 	files = append(files, pkg.CgoFiles...)
 	files = append(files, pkg.TestGoFiles...)
-	// TODO: Improve performance.
+	// TODO: Reduce allocation.
 	if pkg.Dir != "." {
 		for _, f := range files {
 			is, err := checkFile(checker, filepath.Join(pkg.Dir, f))
