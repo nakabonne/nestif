@@ -14,6 +14,7 @@ import (
 	"go/build"
 	"go/parser"
 	"go/token"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -30,7 +31,6 @@ var (
 	outJSON       = flagSet.Bool("json", false, "emit json format")
 	minComplexity = flagSet.Int("min", 1, "minimum complexity to show")
 	top           = flagSet.Int("top", 10, "show only the top N most complex if statements")
-	sortIssue     = flagSet.Bool("sort", false, "sort in descending order of complexity")
 	//iferr         = flagSet.Bool("iferr", false, `include the simple "if err != nil" in the calculation`)
 
 	usage = func() {
@@ -53,25 +53,11 @@ func main() {
 		flagSet.Usage()
 	}
 
-	if *sortIssue {
-		sort.Slice(issues, func(i, j int) bool {
-			return issues[i].Complexity > issues[j].Complexity
-		})
-	}
-	// TODO: Implement top.
+	sort.Slice(issues, func(i, j int) bool {
+		return issues[i].Complexity > issues[j].Complexity
+	})
 
-	if *outJSON {
-		js, err := json.Marshal(issues)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		fmt.Println(string(js))
-		return
-	}
-	for _, i := range issues {
-		fmt.Println(i.Message)
-	}
+	write(os.Stdout, issues)
 }
 
 func check() (issues []nestif.Issue, err error) {
@@ -165,7 +151,6 @@ func checkFile(checker *nestif.Checker, filepath string) ([]nestif.Issue, error)
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd.
-
 func checkDir(checker *nestif.Checker, dirname string) ([]nestif.Issue, error) {
 	pkg, err := build.ImportDir(dirname, 0)
 	if err != nil {
@@ -209,6 +194,24 @@ func checkImportedPackage(checker *nestif.Checker, pkg *build.Package) (issues [
 		}
 	}
 	return
+}
+
+func write(w io.Writer, issues []nestif.Issue) {
+	if *outJSON {
+		js, err := json.Marshal(issues)
+		if err != nil {
+			fmt.Fprintln(w, err)
+			return
+		}
+		fmt.Fprintln(w, string(js))
+		return
+	}
+	for i, issue := range issues {
+		if i >= *top {
+			return
+		}
+		fmt.Println(issue.Message)
+	}
 }
 
 // isGenerated reports whether the source file is generated code
