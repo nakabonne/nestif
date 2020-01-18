@@ -32,7 +32,7 @@ var (
 	minComplexity = flagSet.Int("min", 1, "minimum complexity to show")
 	top           = flagSet.Int("top", 10, "show only the top N most complex if statements")
 	sortIssue     = flagSet.Bool("sort", false, "sort in descending order of complexity")
-	ignoreIfErr   = flagSet.Bool("ignore-err", false, `ignore to check "if err != nil"`)
+	//iferr         = flagSet.Bool("iferr", false, `include the simple "if err != nil" in the calculation`)
 
 	usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: nestif [<flag> ...] <Go files or directories or packages> ...")
@@ -78,7 +78,7 @@ func main() {
 func check() (issues []nestif.Issue, err error) {
 	checker := &nestif.Checker{
 		MinComplexity: *minComplexity,
-		IgnoreIfErr:   *ignoreIfErr,
+		//IfErr:         *iferr,
 	}
 	if *verbose {
 		checker.DebugMode()
