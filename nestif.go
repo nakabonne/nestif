@@ -48,7 +48,6 @@ func (c *Checker) Check(f *ast.File, fset *token.FileSet) []Issue {
 		}
 		return true
 	})
-	c.debug("%d issues found\n", len(c.issues))
 
 	return c.issues
 }
