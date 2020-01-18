@@ -71,7 +71,7 @@ func main() {
 		return
 	}
 	for _, i := range issues {
-		fmt.Println(i.Message())
+		fmt.Println(i.Message)
 	}
 }
 

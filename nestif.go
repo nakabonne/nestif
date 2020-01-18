@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"go/types"
 	"io"
 	"os"
 )
@@ -19,14 +18,10 @@ import (
 type Issue struct {
 	Pos        token.Position
 	Complexity int
+	Message    string
+
 	// Condition string such as "if a == b".
 	Condition string
-}
-
-// Message makes a message with its own source position.
-func (i *Issue) Message() string {
-	msg := fmt.Sprintf("%s has nested if statements (complexity: %d)", i.Condition, i.Complexity)
-	return errformat(i.Pos.Filename, i.Pos.Line, i.Pos.Column, msg)
 }
 
 // Checker represents a checker that finds nested if statements.
@@ -81,11 +76,8 @@ func (c *Checker) checkIf(stmt *ast.IfStmt, fset *token.FileSet) {
 	if v.complexity < c.MinComplexity {
 		return
 	}
-	c.issues = append(c.issues, Issue{
-		Pos:        fset.Position(stmt.Pos()),
-		Condition:  "if statement", // TODO: Use condition such as "if a == b".
-		Complexity: v.complexity,
-	})
+	pos := fset.Position(stmt.Pos())
+	c.appendIssue(&pos, "if statement", v.complexity)
 }
 
 type visitor struct {
@@ -120,6 +112,16 @@ func (v *visitor) Visit(n ast.Node) ast.Visitor {
 	return nil
 }
 
+func (c *Checker) appendIssue(pos *token.Position, cond string, complexity int) {
+	msg := fmt.Sprintf("%s has nested if statements (complexity: %d)", cond, complexity)
+	c.issues = append(c.issues, Issue{
+		Pos:        *pos,
+		Complexity: complexity,
+		Message:    errformat(pos.Filename, pos.Line, pos.Column, msg),
+		Condition:  cond,
+	})
+}
+
 // DebugMode makes it possible to emit debug logs.
 func (c *Checker) DebugMode() {
 	c.logWriter = os.Stderr
@@ -135,6 +137,7 @@ func errformat(file string, line, col int, msg string) string {
 	return fmt.Sprintf("%s:%d:%d: %s", file, line, col, msg)
 }
 
+/*
 // ifErr checks if the given condition is "if err != nil"
 func ifErr(cond ast.Expr) bool {
 	expr, ok := cond.(*ast.BinaryExpr)
@@ -149,9 +152,8 @@ func ifErr(cond ast.Expr) bool {
 	if y.String() != "nil" {
 		return false
 	}
-	// FIXME: Check if operator is "!="
+	// TODO: Check if operator is "!="
 	return true
-
 }
 
 var errorType = types.Universe.Lookup("error").Type().Underlying().(*types.Interface)
@@ -159,3 +161,4 @@ var errorType = types.Universe.Lookup("error").Type().Underlying().(*types.Inter
 func isErrorType(t types.Type) bool {
 	return types.Implements(t, errorType)
 }
+*/
