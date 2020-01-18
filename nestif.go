@@ -38,61 +38,54 @@ type Checker struct {
 
 	// For debug mode.
 	logWriter io.Writer
+	issues    []Issue
 }
 
-// Check detects deeply nested if statements.
+// Check inspects a single file and returns found issues.
 func (c *Checker) Check(f *ast.File, fset *token.FileSet) []Issue {
-	var issues []Issue
+	c.issues = []Issue{} // refresh
 	ast.Inspect(f, func(n ast.Node) bool {
 		fn, ok := n.(*ast.FuncDecl)
 		if !ok || fn.Body == nil {
 			return true
 		}
 		for _, stmt := range fn.Body.List {
-			is := c.checkFunc(&stmt, fset)
-			if len(is) > 0 {
-				issues = append(issues, is...)
-			}
+			c.checkFunc(&stmt, fset)
 		}
 		return true
 	})
-	c.debug("%d issues found\n", len(issues))
+	c.debug("%d issues found\n", len(c.issues))
 
-	return issues
+	return c.issues
 }
 
 // checkFunc inspects a function and return a list of Issue.
-func (c *Checker) checkFunc(stmt *ast.Stmt, fset *token.FileSet) (issues []Issue) {
+func (c *Checker) checkFunc(stmt *ast.Stmt, fset *token.FileSet) {
 	ast.Inspect(*stmt, func(n ast.Node) bool {
 		ifStmt, ok := n.(*ast.IfStmt)
 		if !ok {
 			return true
 		}
 
-		i := c.checkIf(ifStmt, fset)
-		if i != nil {
-			issues = append(issues, *i)
-		}
+		c.checkIf(ifStmt, fset)
 		return false
 	})
-	return
 }
 
 // checkIf inspects a if statement and return an Issue.
-func (c *Checker) checkIf(stmt *ast.IfStmt, fset *token.FileSet) *Issue {
+func (c *Checker) checkIf(stmt *ast.IfStmt, fset *token.FileSet) {
 	v := &visitor{
 		ifErr: c.IfErr,
 	}
 	ast.Walk(v, stmt)
 	if v.complexity < c.MinComplexity {
-		return nil
+		return
 	}
-
-	return &Issue{
+	c.issues = append(c.issues, Issue{
 		Pos:        fset.Position(stmt.Pos()),
 		Condition:  "if statement", // TODO: Use condition such as "if a == b".
 		Complexity: v.complexity,
-	}
+	})
 }
 
 type visitor struct {
