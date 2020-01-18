@@ -7,8 +7,10 @@
 package nestif
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
+	"go/printer"
 	"go/token"
 	"io"
 	"os"
@@ -19,9 +21,6 @@ type Issue struct {
 	Pos        token.Position
 	Complexity int
 	Message    string
-
-	// Condition string such as "if a == b".
-	Condition string
 }
 
 // Checker represents a checker that finds nested if statements.
@@ -54,7 +53,7 @@ func (c *Checker) Check(f *ast.File, fset *token.FileSet) []Issue {
 	return c.issues
 }
 
-// checkFunc inspects a function and return a list of Issue.
+// checkFunc inspects a function and sets a list of issues if there are.
 func (c *Checker) checkFunc(stmt *ast.Stmt, fset *token.FileSet) {
 	ast.Inspect(*stmt, func(n ast.Node) bool {
 		ifStmt, ok := n.(*ast.IfStmt)
@@ -67,17 +66,21 @@ func (c *Checker) checkFunc(stmt *ast.Stmt, fset *token.FileSet) {
 	})
 }
 
-// checkIf inspects a if statement and return an Issue.
+// checkIf inspects a if statement and sets an issue if there is.
 func (c *Checker) checkIf(stmt *ast.IfStmt, fset *token.FileSet) {
 	v := &visitor{
-		ifErr: c.IfErr,
+		//ifErr: c.IfErr,
 	}
 	ast.Walk(v, stmt)
 	if v.complexity < c.MinComplexity {
 		return
 	}
 	pos := fset.Position(stmt.Pos())
-	c.appendIssue(&pos, "if statement", v.complexity)
+	c.issues = append(c.issues, Issue{
+		Pos:        pos,
+		Complexity: v.complexity,
+		Message:    c.makeMessage(pos.Filename, pos.Line, pos.Column, v.complexity, stmt.Cond, fset),
+	})
 }
 
 type visitor struct {
@@ -85,7 +88,7 @@ type visitor struct {
 	nesting    int
 
 	// Include the simple "if err != nil" in the calculation.
-	ifErr bool
+	//ifErr bool
 }
 
 // Visit traverses an AST in depth-first order, and calculates
@@ -112,14 +115,18 @@ func (v *visitor) Visit(n ast.Node) ast.Visitor {
 	return nil
 }
 
-func (c *Checker) appendIssue(pos *token.Position, cond string, complexity int) {
-	msg := fmt.Sprintf("%s has nested if statements (complexity: %d)", cond, complexity)
-	c.issues = append(c.issues, Issue{
-		Pos:        *pos,
-		Complexity: complexity,
-		Message:    errformat(pos.Filename, pos.Line, pos.Column, msg),
-		Condition:  cond,
-	})
+func (c *Checker) makeMessage(file string, line, col, complexity int, cond ast.Expr, fset *token.FileSet) string {
+	p := &printer.Config{}
+	b := new(bytes.Buffer)
+	if err := p.Fprint(b, fset, cond); err != nil {
+		c.debug("failed to convert condition into string: %v", err)
+	}
+	msg := fmt.Sprintf("`if %s` is nested (complexity: %d)", b.String(), complexity)
+	return errformat(file, line, col, msg)
+}
+
+func errformat(file string, line, col int, msg string) string {
+	return fmt.Sprintf("%s:%d:%d: %s", file, line, col, msg)
 }
 
 // DebugMode makes it possible to emit debug logs.
@@ -131,10 +138,6 @@ func (c *Checker) debug(format string, a ...interface{}) {
 	if c.logWriter != nil {
 		fmt.Fprintf(c.logWriter, format, a...)
 	}
-}
-
-func errformat(file string, line, col int, msg string) string {
-	return fmt.Sprintf("%s:%d:%d: %s", file, line, col, msg)
 }
 
 /*

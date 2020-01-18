@@ -1,9 +1,7 @@
 package testdata
 
 var (
-	b1 = true
-	b2 = true
-	b3 = true
+	b1, b2, b3 bool
 )
 
 func _() {
