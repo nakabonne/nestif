@@ -28,7 +28,7 @@ type Checker struct {
 	// Minimum complexity to report.
 	MinComplexity int
 	// Include the simple "if err != nil" in the calculation.
-	IfErr bool
+	//IfErr bool
 
 	// For debug mode.
 	logWriter io.Writer
