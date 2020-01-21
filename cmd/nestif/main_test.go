@@ -29,7 +29,7 @@ func TestRun(t *testing.T) {
 			args:          []string{"../../testdata/a.go"},
 			minComplexity: 1,
 			top:           10,
-			want:          "../../testdata/a.go:8:2: `if b1` is nested (complexity: 1)\n",
+			want:          "../../testdata/a.go:9:2: `if b1` is nested (complexity: 1)\n",
 		},
 		{
 			name:          "show only top 2",

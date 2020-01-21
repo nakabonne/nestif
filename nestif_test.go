@@ -30,12 +30,12 @@ func TestCheck(t *testing.T) {
 				{
 					Pos: token.Position{
 						Filename: "./testdata/a.go",
-						Offset:   77,
-						Line:     8,
+						Offset:   78,
+						Line:     9,
 						Column:   2,
 					},
 					Complexity: 1,
-					Message:    "./testdata/a.go:8:2: `if b1` is nested (complexity: 1)",
+					Message:    "./testdata/a.go:9:2: `if b1` is nested (complexity: 1)",
 				},
 			},
 		},
@@ -64,12 +64,22 @@ func TestCheck(t *testing.T) {
 				{
 					Pos: token.Position{
 						Filename: "./testdata/c.go",
-						Offset:   69,
+						Offset:   56,
 						Line:     6,
 						Column:   2,
 					},
-					Complexity: 3,
-					Message:    "./testdata/c.go:6:2: `if b1` is nested (complexity: 3)",
+					Complexity: 4,
+					Message:    "./testdata/c.go:6:2: `if b1` is nested (complexity: 4)",
+				},
+				{
+					Pos: token.Position{
+						Filename: "./testdata/c.go",
+						Offset:   145,
+						Line:     14,
+						Column:   2,
+					},
+					Complexity: 4,
+					Message:    "./testdata/c.go:14:2: `if b1` is nested (complexity: 4)",
 				},
 			},
 		},

@@ -67,9 +67,7 @@ func (c *Checker) checkFunc(stmt *ast.Stmt, fset *token.FileSet) {
 
 // checkIf inspects a if statement and sets an issue if there is.
 func (c *Checker) checkIf(stmt *ast.IfStmt, fset *token.FileSet) {
-	v := &visitor{
-		//ifErr: c.IfErr,
-	}
+	v := newVisitor()
 	ast.Walk(v, stmt)
 	if v.complexity < c.MinComplexity {
 		return
@@ -85,13 +83,21 @@ func (c *Checker) checkIf(stmt *ast.IfStmt, fset *token.FileSet) {
 type visitor struct {
 	complexity int
 	nesting    int
-
+	// To avoid adding complexity including nesting level to `else if`.
+	elseifs map[ast.Node]bool
 	// Include the simple "if err != nil" in the calculation.
 	//ifErr bool
 }
 
-// Visit traverses an AST in depth-first order, and calculates
-// the complexities of if statements.
+func newVisitor() *visitor {
+	return &visitor{
+		elseifs: make(map[ast.Node]bool),
+		//ifErr: c.IfErr,
+	}
+}
+
+// Visit traverses an AST in depth-first order by calling itself
+// recursively, and calculates the complexities of if statements.
 func (v *visitor) Visit(n ast.Node) ast.Visitor {
 	ifStmt, ok := n.(*ast.IfStmt)
 	if !ok {
@@ -103,15 +109,31 @@ func (v *visitor) Visit(n ast.Node) ast.Visitor {
 	//	return nil
 	//}
 
-	v.complexity += v.nesting
+	v.incComplexity(ifStmt)
 	v.nesting++
 	ast.Walk(v, ifStmt.Body)
-	if ifStmt.Else != nil {
-		ast.Walk(v, ifStmt.Else)
-	}
 	v.nesting--
 
+	if _, ok := ifStmt.Else.(*ast.BlockStmt); ok {
+		v.complexity++
+		v.nesting++
+		ast.Walk(v, ifStmt.Else)
+		v.nesting--
+	} else if _, ok := ifStmt.Else.(*ast.IfStmt); ok {
+		v.elseifs[ifStmt.Else] = true
+		ast.Walk(v, ifStmt.Else)
+	}
+
 	return nil
+}
+
+func (v *visitor) incComplexity(n *ast.IfStmt) {
+	// In case of `else if`, increase by 1.
+	if v.elseifs[n] {
+		v.complexity++
+	} else {
+		v.complexity += v.nesting
+	}
 }
 
 func (c *Checker) makeMessage(file string, line, col, complexity int, cond ast.Expr, fset *token.FileSet) string {
