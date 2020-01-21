@@ -92,6 +92,14 @@ func TestRun(t *testing.T) {
 				return path + ":8:2: `if b1` is nested (complexity: 1)\n"
 			}(),
 		},
+		{
+			name:          "json output",
+			outJSON:       true,
+			args:          []string{"../../testdata/a.go"},
+			minComplexity: 1,
+			top:           10,
+			want:          "[{\"Pos\":{\"Filename\":\"../../testdata/a.go\",\"Offset\":78,\"Line\":9,\"Column\":2},\"Complexity\":1,\"Message\":\"../../testdata/a.go:9:2: `if b1` is nested (complexity: 1)\"}]\n",
+		},
 	}
 
 	for _, tc := range cases {
