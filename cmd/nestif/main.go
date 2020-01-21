@@ -148,7 +148,7 @@ func checkFile(checker *nestif.Checker, filepath string) ([]nestif.Issue, error)
 		return nil, err
 	}
 	if len(f.Comments) > 0 && isGenerated(src) {
-		return nil, fmt.Errorf("%s is a generated file\n", filepath)
+		return nil, fmt.Errorf("%s is a generated file", filepath)
 	}
 
 	return checker.Check(f, fset), nil
