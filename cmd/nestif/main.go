@@ -51,7 +51,6 @@ func main() {
 	flagSet.BoolVar(&a.outJSON, "json", false, "emit json format")
 	flagSet.IntVar(&a.minComplexity, "min", 1, "minimum complexity to show")
 	flagSet.IntVar(&a.top, "top", 10, "show only the top N most complex if statements")
-	//a.iferr         = flagSet.Bool("iferr", false, `include the simple "if err != nil" in the calculation`)
 	flagSet.Usage = usage
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err != flag.ErrHelp {
@@ -76,7 +75,6 @@ func (a *app) run(args []string) {
 func (a *app) check(args []string) (issues []nestif.Issue) {
 	checker := &nestif.Checker{
 		MinComplexity: a.minComplexity,
-		//IfErr:         *iferr,
 	}
 	if a.verbose {
 		checker.DebugMode(a.stderr)

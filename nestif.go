@@ -27,8 +27,6 @@ type Issue struct {
 type Checker struct {
 	// Minimum complexity to report.
 	MinComplexity int
-	// Include the simple "if err != nil" in the calculation.
-	//IfErr bool
 
 	// For debug mode.
 	debugWriter io.Writer
@@ -85,14 +83,11 @@ type visitor struct {
 	nesting    int
 	// To avoid adding complexity including nesting level to `else if`.
 	elseifs map[ast.Node]bool
-	// Include the simple "if err != nil" in the calculation.
-	//ifErr bool
 }
 
 func newVisitor() *visitor {
 	return &visitor{
 		elseifs: make(map[ast.Node]bool),
-		//ifErr: c.IfErr,
 	}
 }
 
@@ -103,11 +98,6 @@ func (v *visitor) Visit(n ast.Node) ast.Visitor {
 	if !ok {
 		return v
 	}
-
-	// Ignore the simple "if err != nil"
-	//if !v.ifErr && ifErr(ifStmt.Cond) {
-	//	return nil
-	//}
 
 	v.incComplexity(ifStmt)
 	v.nesting++
@@ -160,29 +150,3 @@ func (c *Checker) debug(format string, a ...interface{}) {
 		fmt.Fprintf(c.debugWriter, format, a...)
 	}
 }
-
-/*
-// ifErr checks if the given condition is "if err != nil"
-func ifErr(cond ast.Expr) bool {
-	expr, ok := cond.(*ast.BinaryExpr)
-	if !ok {
-		return false
-	}
-	// TODO: Check if the type of X is error
-	y, ok := expr.Y.(*ast.Ident)
-	if !ok {
-		return false
-	}
-	if y.String() != "nil" {
-		return false
-	}
-	// TODO: Check if operator is "!="
-	return true
-}
-
-var errorType = types.Universe.Lookup("error").Type().Underlying().(*types.Interface)
-
-func isErrorType(t types.Type) bool {
-	return types.Implements(t, errorType)
-}
-*/
