@@ -1,4 +1,5 @@
 // Copyright 2020 Ryo Nakao <nakabonne@gmail.com>.
+//
 // All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -13,7 +14,6 @@ import (
 	"go/printer"
 	"go/token"
 	"io"
-	"os"
 )
 
 // Issue represents an issue of root if statement that has nested ifs.
@@ -31,8 +31,8 @@ type Checker struct {
 	//IfErr bool
 
 	// For debug mode.
-	logWriter io.Writer
-	issues    []Issue
+	debugWriter io.Writer
+	issues      []Issue
 }
 
 // Check inspects a single file and returns found issues.
@@ -129,13 +129,13 @@ func errformat(file string, line, col int, msg string) string {
 }
 
 // DebugMode makes it possible to emit debug logs.
-func (c *Checker) DebugMode() {
-	c.logWriter = os.Stderr
+func (c *Checker) DebugMode(w io.Writer) {
+	c.debugWriter = w
 }
 
 func (c *Checker) debug(format string, a ...interface{}) {
-	if c.logWriter != nil {
-		fmt.Fprintf(c.logWriter, format, a...)
+	if c.debugWriter != nil {
+		fmt.Fprintf(c.debugWriter, format, a...)
 	}
 }
 

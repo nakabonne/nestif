@@ -1,4 +1,5 @@
 // Copyright 2020 Ryo Nakao <nakabonne@gmail.com>.
+//
 // All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -28,6 +29,7 @@ It has been updated to follow upstream changes in a few ways.
 import (
 	"fmt"
 	"go/build"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -56,10 +58,10 @@ func matchPattern(pattern string) func(name string) bool {
 // allPackagesInFS is like allPackages but is passed a pattern
 // beginning ./ or ../, meaning it should scan the tree rooted
 // at the given directory.  There are ... in the pattern too.
-func allPackagesInFS(pattern string) []string {
+func allPackagesInFS(pattern string, w io.Writer) []string {
 	pkgs := matchPackagesInFS(pattern)
 	if len(pkgs) == 0 {
-		fmt.Fprintf(os.Stderr, "warning: %q matched no packages\n", pattern)
+		fmt.Fprintf(w, "warning: %q matched no packages\n", pattern)
 	}
 	return pkgs
 }

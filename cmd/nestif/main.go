@@ -1,4 +1,5 @@
 // Copyright 2020 Ryo Nakao <nakabonne@gmail.com>.
+//
 // All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -26,54 +27,70 @@ import (
 
 var (
 	flagSet = flag.NewFlagSet("nestif", flag.ContinueOnError)
-
-	verbose       = flagSet.Bool("v", false, "verbose output")
-	outJSON       = flagSet.Bool("json", false, "emit json format")
-	minComplexity = flagSet.Int("min", 1, "minimum complexity to show")
-	top           = flagSet.Int("top", 10, "show only the top N most complex if statements")
-	//iferr         = flagSet.Bool("iferr", false, `include the simple "if err != nil" in the calculation`)
-
-	usage = func() {
+	usage   = func() {
 		fmt.Fprintln(os.Stderr, "usage: nestif [<flag> ...] <Go files or directories or packages> ...")
 		flagSet.PrintDefaults()
 	}
 )
 
+type app struct {
+	verbose       bool
+	outJSON       bool
+	minComplexity int
+	top           int
+	stdout        io.Writer
+	stderr        io.Writer
+}
+
 func main() {
+	a := &app{
+		stdout: os.Stdout,
+		stderr: os.Stderr,
+	}
+	flagSet.BoolVar(&a.verbose, "v", false, "verbose output")
+	flagSet.BoolVar(&a.outJSON, "json", false, "emit json format")
+	flagSet.IntVar(&a.minComplexity, "min", 1, "minimum complexity to show")
+	flagSet.IntVar(&a.top, "top", 10, "show only the top N most complex if statements")
+	//a.iferr         = flagSet.Bool("iferr", false, `include the simple "if err != nil" in the calculation`)
 	flagSet.Usage = usage
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err != flag.ErrHelp {
-			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintln(a.stderr, err)
 		}
 		return
 	}
 
-	issues, err := check()
-	if err != nil {
-		flagSet.Usage()
-	}
+	a.run(flagSet.Args())
+}
+
+func (a *app) run(args []string) {
+	issues := a.check(args)
 
 	sort.Slice(issues, func(i, j int) bool {
 		return issues[i].Complexity > issues[j].Complexity
 	})
 
-	write(os.Stdout, issues)
+	a.write(issues)
 }
 
-func check() (issues []nestif.Issue, err error) {
+func (a *app) check(args []string) (issues []nestif.Issue) {
 	checker := &nestif.Checker{
-		MinComplexity: *minComplexity,
+		MinComplexity: a.minComplexity,
 		//IfErr:         *iferr,
 	}
-	if *verbose {
-		checker.DebugMode()
+	if a.verbose {
+		checker.DebugMode(a.stderr)
 	}
 
 	// TODO: Reduce allocation.
 	var files, dirs, pkgs []string
-	for _, arg := range flagSet.Args() {
+	// Check all files recursively when no args given.
+	if len(args) == 0 {
+		dirs = append(dirs, allPackagesInFS("./...", a.stderr)...)
+	}
+	for _, arg := range args {
 		if strings.HasSuffix(arg, "/...") && isDir(arg[:len(arg)-len("/...")]) {
-			dirs = append(dirs, allPackagesInFS(arg)...)
+			dirs = append(dirs, allPackagesInFS(arg, a.stderr)...)
 		} else if isDir(arg) {
 			dirs = append(dirs, arg)
 		} else if exists(arg) {
@@ -82,36 +99,27 @@ func check() (issues []nestif.Issue, err error) {
 			pkgs = append(pkgs, arg)
 		}
 	}
-	// Check all files recursively when no args given.
-	if len(files) == 0 && len(dirs) == 0 && len(pkgs) == 0 {
-		dirs = append(dirs, allPackagesInFS("./...")...)
-	}
+
 	for _, f := range files {
 		is, err := checkFile(checker, f)
 		if err != nil {
-			if *verbose {
-				fmt.Println(err)
-			}
+			a.debug(err)
 			continue
 		}
 		issues = append(issues, is...)
 	}
 	for _, d := range dirs {
-		is, err := checkDir(checker, d)
+		is, err := a.checkDir(checker, d)
 		if err != nil {
-			if *verbose {
-				fmt.Println(err)
-			}
+			a.debug(err)
 			continue
 		}
 		issues = append(issues, is...)
 	}
 	for _, p := range pkgs {
-		is, err := checkPackage(checker, p)
+		is, err := a.checkPackage(checker, p)
 		if err != nil {
-			if *verbose {
-				fmt.Println(err)
-			}
+			fmt.Fprintln(a.stdout, err)
 			continue
 		}
 		issues = append(issues, is...)
@@ -151,7 +159,7 @@ func checkFile(checker *nestif.Checker, filepath string) ([]nestif.Issue, error)
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd.
-func checkDir(checker *nestif.Checker, dirname string) ([]nestif.Issue, error) {
+func (a *app) checkDir(checker *nestif.Checker, dirname string) ([]nestif.Issue, error) {
 	pkg, err := build.ImportDir(dirname, 0)
 	if err != nil {
 		if _, nogo := err.(*build.NoGoError); nogo {
@@ -160,10 +168,10 @@ func checkDir(checker *nestif.Checker, dirname string) ([]nestif.Issue, error) {
 		}
 		return nil, err
 	}
-	return checkImportedPackage(checker, pkg)
+	return a.checkImportedPackage(checker, pkg)
 }
 
-func checkPackage(checker *nestif.Checker, pkgname string) ([]nestif.Issue, error) {
+func (a *app) checkPackage(checker *nestif.Checker, pkgname string) ([]nestif.Issue, error) {
 	pkg, err := build.Import(pkgname, ".", 0)
 	if err != nil {
 		if _, nogo := err.(*build.NoGoError); nogo {
@@ -172,10 +180,10 @@ func checkPackage(checker *nestif.Checker, pkgname string) ([]nestif.Issue, erro
 		}
 		return nil, err
 	}
-	return checkImportedPackage(checker, pkg)
+	return a.checkImportedPackage(checker, pkg)
 }
 
-func checkImportedPackage(checker *nestif.Checker, pkg *build.Package) (issues []nestif.Issue, err error) {
+func (a *app) checkImportedPackage(checker *nestif.Checker, pkg *build.Package) (issues []nestif.Issue, err error) {
 	var files []string
 	files = append(files, pkg.GoFiles...)
 	files = append(files, pkg.CgoFiles...)
@@ -185,9 +193,7 @@ func checkImportedPackage(checker *nestif.Checker, pkg *build.Package) (issues [
 		for _, f := range files {
 			is, err := checkFile(checker, filepath.Join(pkg.Dir, f))
 			if err != nil {
-				if *verbose {
-					fmt.Println(err)
-				}
+				a.debug(err)
 				continue
 			}
 			issues = append(issues, is...)
@@ -196,21 +202,27 @@ func checkImportedPackage(checker *nestif.Checker, pkg *build.Package) (issues [
 	return
 }
 
-func write(w io.Writer, issues []nestif.Issue) {
-	if *outJSON {
+func (a *app) write(issues []nestif.Issue) {
+	if a.outJSON {
 		js, err := json.Marshal(issues)
 		if err != nil {
-			fmt.Fprintln(w, err)
+			fmt.Fprintln(a.stderr, err)
 			return
 		}
-		fmt.Fprintln(w, string(js))
+		fmt.Fprintln(a.stdout, string(js))
 		return
 	}
 	for i, issue := range issues {
-		if i >= *top {
+		if i >= a.top {
 			return
 		}
-		fmt.Println(issue.Message)
+		fmt.Fprintln(a.stdout, issue.Message)
+	}
+}
+
+func (a *app) debug(err error) {
+	if a.verbose {
+		fmt.Fprintln(a.stdout, err)
 	}
 }
 
