@@ -10,7 +10,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"go/build"
 	"go/parser"
@@ -19,10 +18,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/nakabonne/nestif"
+	flag "github.com/spf13/pflag"
 )
 
 var (
@@ -34,12 +35,14 @@ var (
 )
 
 type app struct {
-	verbose       bool
-	outJSON       bool
-	minComplexity int
-	top           int
-	stdout        io.Writer
-	stderr        io.Writer
+	verbose         bool
+	outJSON         bool
+	minComplexity   int
+	top             int
+	excludeDirs     []string
+	excludePatterns []*regexp.Regexp
+	stdout          io.Writer
+	stderr          io.Writer
 }
 
 func main() {
@@ -51,6 +54,7 @@ func main() {
 	flagSet.BoolVar(&a.outJSON, "json", false, "emit json format")
 	flagSet.IntVar(&a.minComplexity, "min", 1, "minimum complexity to show")
 	flagSet.IntVar(&a.top, "top", 10, "show only the top N most complex if statements")
+	flagSet.StringSliceVarP(&a.excludeDirs, "exclude-dirs", "e", []string{}, "regexps of directories to be excluded for checking; comma-separated list")
 	flagSet.Usage = usage
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err != flag.ErrHelp {
@@ -59,20 +63,33 @@ func main() {
 		return
 	}
 
-	a.run(flagSet.Args())
+	os.Exit(a.run(flagSet.Args()))
 }
 
-func (a *app) run(args []string) {
-	issues := a.check(args)
-
+func (a *app) run(args []string) int {
+	issues, err := a.check(args)
+	if err != nil {
+		fmt.Fprintln(a.stderr, err)
+		return 1
+	}
 	sort.Slice(issues, func(i, j int) bool {
 		return issues[i].Complexity > issues[j].Complexity
 	})
 
 	a.write(issues)
+	return 0
 }
 
-func (a *app) check(args []string) (issues []nestif.Issue) {
+func (a *app) check(args []string) ([]nestif.Issue, error) {
+	a.excludePatterns = make([]*regexp.Regexp, 0, len(a.excludeDirs))
+	for _, d := range a.excludeDirs {
+		p, err := regexp.Compile(d)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse exclude dir pattern: %v", err)
+		}
+		a.excludePatterns = append(a.excludePatterns, p)
+	}
+
 	checker := &nestif.Checker{
 		MinComplexity: a.minComplexity,
 	}
@@ -98,8 +115,9 @@ func (a *app) check(args []string) (issues []nestif.Issue) {
 		}
 	}
 
+	var issues []nestif.Issue
 	for _, f := range files {
-		is, err := checkFile(checker, f)
+		is, err := a.checkFile(checker, f)
 		if err != nil {
 			a.debug(err)
 			continue
@@ -122,31 +140,28 @@ func (a *app) check(args []string) (issues []nestif.Issue) {
 		}
 		issues = append(issues, is...)
 	}
-	return
+	return issues, nil
 }
 
-func isDir(filename string) bool {
-	fi, err := os.Stat(filename)
-	return err == nil && fi.IsDir()
-}
+func (a *app) checkFile(checker *nestif.Checker, path string) ([]nestif.Issue, error) {
+	dir := filepath.Dir(path)
+	for _, p := range a.excludePatterns {
+		if p.MatchString(dir) {
+			return []nestif.Issue{}, nil
+		}
+	}
 
-func exists(filename string) bool {
-	_, err := os.Stat(filename)
-	return err == nil
-}
-
-func checkFile(checker *nestif.Checker, filepath string) ([]nestif.Issue, error) {
-	src, err := ioutil.ReadFile(filepath)
+	src, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, filepath, src, parser.ParseComments)
+	f, err := parser.ParseFile(fset, path, src, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
 	if len(f.Comments) > 0 && isGenerated(src) {
-		return nil, fmt.Errorf("%s is a generated file", filepath)
+		return nil, fmt.Errorf("%s is a generated file", path)
 	}
 
 	return checker.Check(f, fset), nil
@@ -158,6 +173,11 @@ func checkFile(checker *nestif.Checker, filepath string) ([]nestif.Issue, error)
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd.
 func (a *app) checkDir(checker *nestif.Checker, dirname string) ([]nestif.Issue, error) {
+	for _, p := range a.excludePatterns {
+		if p.MatchString(dirname) {
+			return []nestif.Issue{}, nil
+		}
+	}
 	pkg, err := build.ImportDir(dirname, 0)
 	if err != nil {
 		if _, nogo := err.(*build.NoGoError); nogo {
@@ -189,7 +209,7 @@ func (a *app) checkImportedPackage(checker *nestif.Checker, pkg *build.Package) 
 	// TODO: Reduce allocation.
 	if pkg.Dir != "." {
 		for _, f := range files {
-			is, err := checkFile(checker, filepath.Join(pkg.Dir, f))
+			is, err := a.checkFile(checker, filepath.Join(pkg.Dir, f))
 			if err != nil {
 				a.debug(err)
 				continue
@@ -222,6 +242,16 @@ func (a *app) debug(err error) {
 	if a.verbose {
 		fmt.Fprintln(a.stdout, err)
 	}
+}
+
+func isDir(filename string) bool {
+	fi, err := os.Stat(filename)
+	return err == nil && fi.IsDir()
+}
+
+func exists(filename string) bool {
+	_, err := os.Stat(filename)
+	return err == nil
 }
 
 // isGenerated reports whether the source file is generated code

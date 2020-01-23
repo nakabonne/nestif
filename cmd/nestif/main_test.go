@@ -22,7 +22,9 @@ func TestRun(t *testing.T) {
 		outJSON       bool
 		minComplexity int
 		top           int
+		excludeDirs   []string
 		want          string
+		code          int
 	}{
 		{
 			name:          "increment for breaks in the linear flow",
@@ -30,6 +32,7 @@ func TestRun(t *testing.T) {
 			minComplexity: 1,
 			top:           10,
 			want:          "../../testdata/a.go:9:2: `if b1` is nested (complexity: 1)\n",
+			code:          0,
 		},
 		{
 			name:          "show only top 2",
@@ -37,6 +40,7 @@ func TestRun(t *testing.T) {
 			minComplexity: 1,
 			top:           2,
 			want:          "../../testdata/d.go:16:2: `if b1` is nested (complexity: 3)\n../../testdata/d.go:6:2: `if b1` is nested (complexity: 1)\n",
+			code:          0,
 		},
 		{
 			name:          "show only those with complexity of 2 or more",
@@ -44,6 +48,7 @@ func TestRun(t *testing.T) {
 			minComplexity: 2,
 			top:           10,
 			want:          "../../testdata/d.go:16:2: `if b1` is nested (complexity: 3)\n",
+			code:          0,
 		},
 		{
 			name:          "ignore generated file",
@@ -51,6 +56,7 @@ func TestRun(t *testing.T) {
 			minComplexity: 1,
 			top:           10,
 			want:          "",
+			code:          0,
 		},
 		{
 			name:          "directory given",
@@ -58,6 +64,7 @@ func TestRun(t *testing.T) {
 			minComplexity: 1,
 			top:           10,
 			want:          "../../testdata/a/a.go:8:2: `if b1` is nested (complexity: 1)\n",
+			code:          0,
 		},
 		{
 			name:          "Check files recursively",
@@ -65,6 +72,7 @@ func TestRun(t *testing.T) {
 			minComplexity: 1,
 			top:           10,
 			want:          "../../testdata/a/a.go:8:2: `if b1` is nested (complexity: 1)\n../../testdata/a/b/a.go:8:2: `if b1` is nested (complexity: 1)\n",
+			code:          0,
 		},
 		{
 			name:          "Check all files recursively",
@@ -73,6 +81,7 @@ func TestRun(t *testing.T) {
 			minComplexity: 1,
 			top:           10,
 			want:          "",
+			code:          0,
 		},
 		{
 			name:          "no args given",
@@ -81,6 +90,7 @@ func TestRun(t *testing.T) {
 			minComplexity: 1,
 			top:           10,
 			want:          "",
+			code:          0,
 		},
 		{
 			name:          "package name given",
@@ -91,6 +101,7 @@ func TestRun(t *testing.T) {
 				path, _ := filepath.Abs("../../testdata/a/a.go")
 				return path + ":8:2: `if b1` is nested (complexity: 1)\n"
 			}(),
+			code: 0,
 		},
 		{
 			name:          "json output",
@@ -99,6 +110,25 @@ func TestRun(t *testing.T) {
 			minComplexity: 1,
 			top:           10,
 			want:          "[{\"Pos\":{\"Filename\":\"../../testdata/a.go\",\"Offset\":78,\"Line\":9,\"Column\":2},\"Complexity\":1,\"Message\":\"../../testdata/a.go:9:2: `if b1` is nested (complexity: 1)\"}]\n",
+			code:          0,
+		},
+		{
+			name:          "exclude-dirs given",
+			args:          []string{"../../testdata"},
+			minComplexity: 1,
+			top:           10,
+			excludeDirs:   []string{"../../testdata"},
+			want:          "",
+			code:          0,
+		},
+		{
+			name:          "wrong exclude-dirs given",
+			args:          []string{"../../testdata"},
+			minComplexity: 1,
+			top:           10,
+			excludeDirs:   []string{"(^|/../../testdata"},
+			want:          "failed to parse exclude dir pattern: error parsing regexp: missing closing ): `(^|/../../testdata`\n",
+			code:          1,
 		},
 	}
 
@@ -110,10 +140,12 @@ func TestRun(t *testing.T) {
 				outJSON:       tc.outJSON,
 				minComplexity: tc.minComplexity,
 				top:           tc.top,
+				excludeDirs:   tc.excludeDirs,
 				stdout:        b,
 				stderr:        b,
 			}
-			a.run(tc.args)
+			c := a.run(tc.args)
+			assert.Equal(t, tc.code, c)
 			assert.Equal(t, tc.want, b.String())
 		})
 	}
