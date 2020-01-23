@@ -50,7 +50,7 @@ func main() {
 		stdout: os.Stdout,
 		stderr: os.Stderr,
 	}
-	flagSet.BoolVar(&a.verbose, "v", false, "verbose output")
+	flagSet.BoolVarP(&a.verbose, "verbose", "v", false, "verbose output")
 	flagSet.BoolVar(&a.outJSON, "json", false, "emit json format")
 	flagSet.IntVar(&a.minComplexity, "min", 1, "minimum complexity to show")
 	flagSet.IntVar(&a.top, "top", 10, "show only the top N most complex if statements")

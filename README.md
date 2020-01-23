@@ -46,7 +46,7 @@ usage: nestif [<flag> ...] <Go files or directories or packages> ...
       --json                   emit json format
       --min int                minimum complexity to show (default 1)
       --top int                show only the top N most complex if statements (default 10)
-      --v                      verbose output
+  -v, --verbose                verbose output
 ```
 
 ### Example
