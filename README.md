@@ -42,13 +42,11 @@ nestif github.com/foo/bar example.com/bar/baz
 
 ```
 usage: nestif [<flag> ...] <Go files or directories or packages> ...
-  -json
-    	emit json format
-  -min int
-    	minimum complexity to show (default 1)
-  -top int
-    	show only the top N most complex if statements (default 10)
-  -v	verbose output
+  -e, --exclude-dirs strings   regexps of directories to be excluded for checking; comma-separated list
+      --json                   emit json format
+      --min int                minimum complexity to show (default 1)
+      --top int                show only the top N most complex if statements (default 10)
+      --v                      verbose output
 ```
 
 ### Example
