@@ -82,12 +82,12 @@ type visitor struct {
 	complexity int
 	nesting    int
 	// To avoid adding complexity including nesting level to `else if`.
-	elseifs map[ast.Node]bool
+	elseifs map[*ast.IfStmt]bool
 }
 
 func newVisitor() *visitor {
 	return &visitor{
-		elseifs: make(map[ast.Node]bool),
+		elseifs: make(map[*ast.IfStmt]bool),
 	}
 }
 
@@ -104,14 +104,15 @@ func (v *visitor) Visit(n ast.Node) ast.Visitor {
 	ast.Walk(v, ifStmt.Body)
 	v.nesting--
 
-	if _, ok := ifStmt.Else.(*ast.BlockStmt); ok {
+	switch t := ifStmt.Else.(type) {
+	case *ast.BlockStmt:
 		v.complexity++
 		v.nesting++
-		ast.Walk(v, ifStmt.Else)
+		ast.Walk(v, t)
 		v.nesting--
-	} else if _, ok := ifStmt.Else.(*ast.IfStmt); ok {
-		v.elseifs[ifStmt.Else] = true
-		ast.Walk(v, ifStmt.Else)
+	case *ast.IfStmt:
+		v.elseifs[t] = true
+		ast.Walk(v, t)
 	}
 
 	return nil
