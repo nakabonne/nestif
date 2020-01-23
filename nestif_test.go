@@ -7,6 +7,7 @@
 package nestif
 
 import (
+	"bytes"
 	"go/parser"
 	"go/token"
 	"io/ioutil"
@@ -102,6 +103,58 @@ func TestCheck(t *testing.T) {
 			i := checker.Check(f, fset)
 
 			assert.ElementsMatch(t, tc.want, i)
+		})
+	}
+}
+
+func TestDebug(t *testing.T) {
+	cases := []struct {
+		name       string
+		format     string
+		values     []interface{}
+		checkerGen func(*bytes.Buffer) *Checker
+		want       string
+	}{
+		{
+			name:   "not debug mode",
+			format: "warning: %s",
+			values: []interface{}{"foo"},
+			checkerGen: func(b *bytes.Buffer) *Checker {
+				return &Checker{}
+			},
+			want: "",
+		},
+		{
+			name:   "debug mode",
+			format: "warning: %s",
+			values: []interface{}{"foo"},
+			checkerGen: func(b *bytes.Buffer) *Checker {
+				c := &Checker{}
+				c.DebugMode(b)
+				return c
+			},
+			want: "warning: foo",
+		},
+		{
+			name:   "debug with multiple values",
+			format: "warning: %s %d %T",
+			values: []interface{}{"foo", 1, true},
+			checkerGen: func(b *bytes.Buffer) *Checker {
+				c := &Checker{}
+				c.DebugMode(b)
+				return c
+			},
+			want: "warning: foo 1 bool",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			b := new(bytes.Buffer)
+			c := tc.checkerGen(b)
+			c.debug(tc.format, tc.values...)
+
+			assert.Equal(t, tc.want, b.String())
 		})
 	}
 }
