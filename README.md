@@ -112,6 +112,11 @@ if condition1 {
 }
 ```
 
+## Inspired by
+
+- [uudashr/gocognit](https://github.com/uudashr/gocognit)
+- [fzipp/gocyclo](https://github.com/fzipp/gocyclo)
+
 ## Further reading
 
 Please see the [Cognitive Complexity: A new way of measuring understandability](https://www.sonarsource.com/docs/CognitiveComplexity.pdf) white paper by G. Ann Campbell for more detail on Cognitive Complexity.
