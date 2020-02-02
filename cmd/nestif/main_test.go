@@ -31,7 +31,7 @@ func TestRun(t *testing.T) {
 			args:          []string{"../../testdata/a.go"},
 			minComplexity: 1,
 			top:           10,
-			want:          "../../testdata/a.go:9:2: `if b1` is nested (complexity: 1)\n",
+			want:          "../../testdata/a.go:9:2: `if b1` is deeply nested (complexity: 1)\n",
 			code:          0,
 		},
 		{
@@ -39,7 +39,7 @@ func TestRun(t *testing.T) {
 			args:          []string{"../../testdata/d.go"},
 			minComplexity: 1,
 			top:           2,
-			want:          "../../testdata/d.go:16:2: `if b1` is nested (complexity: 3)\n../../testdata/d.go:6:2: `if b1` is nested (complexity: 1)\n",
+			want:          "../../testdata/d.go:16:2: `if b1` is deeply nested (complexity: 3)\n../../testdata/d.go:6:2: `if b1` is deeply nested (complexity: 1)\n",
 			code:          0,
 		},
 		{
@@ -47,7 +47,7 @@ func TestRun(t *testing.T) {
 			args:          []string{"../../testdata/d.go"},
 			minComplexity: 2,
 			top:           10,
-			want:          "../../testdata/d.go:16:2: `if b1` is nested (complexity: 3)\n",
+			want:          "../../testdata/d.go:16:2: `if b1` is deeply nested (complexity: 3)\n",
 			code:          0,
 		},
 		{
@@ -63,7 +63,7 @@ func TestRun(t *testing.T) {
 			args:          []string{"../../testdata/a"},
 			minComplexity: 1,
 			top:           10,
-			want:          "../../testdata/a/a.go:8:2: `if b1` is nested (complexity: 1)\n",
+			want:          "../../testdata/a/a.go:8:2: `if b1` is deeply nested (complexity: 1)\n",
 			code:          0,
 		},
 		{
@@ -71,7 +71,7 @@ func TestRun(t *testing.T) {
 			args:          []string{"../../testdata/a/..."},
 			minComplexity: 1,
 			top:           10,
-			want:          "../../testdata/a/a.go:8:2: `if b1` is nested (complexity: 1)\n../../testdata/a/b/a.go:8:2: `if b1` is nested (complexity: 1)\n",
+			want:          "../../testdata/a/a.go:8:2: `if b1` is deeply nested (complexity: 1)\n../../testdata/a/b/a.go:8:2: `if b1` is deeply nested (complexity: 1)\n",
 			code:          0,
 		},
 		{
@@ -99,7 +99,7 @@ func TestRun(t *testing.T) {
 			top:           10,
 			want: func() string {
 				path, _ := filepath.Abs("../../testdata/a/a.go")
-				return path + ":8:2: `if b1` is nested (complexity: 1)\n"
+				return path + ":8:2: `if b1` is deeply nested (complexity: 1)\n"
 			}(),
 			code: 0,
 		},
@@ -109,7 +109,7 @@ func TestRun(t *testing.T) {
 			args:          []string{"../../testdata/a.go"},
 			minComplexity: 1,
 			top:           10,
-			want:          "[{\"Pos\":{\"Filename\":\"../../testdata/a.go\",\"Offset\":78,\"Line\":9,\"Column\":2},\"Complexity\":1,\"Message\":\"../../testdata/a.go:9:2: `if b1` is nested (complexity: 1)\"}]\n",
+			want:          "[{\"Pos\":{\"Filename\":\"../../testdata/a.go\",\"Offset\":78,\"Line\":9,\"Column\":2},\"Complexity\":1,\"Message\":\"`if b1` is deeply nested (complexity: 1)\"}]\n",
 			code:          0,
 		},
 		{
