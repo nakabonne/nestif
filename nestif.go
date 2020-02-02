@@ -74,7 +74,7 @@ func (c *Checker) checkIf(stmt *ast.IfStmt, fset *token.FileSet) {
 	c.issues = append(c.issues, Issue{
 		Pos:        pos,
 		Complexity: v.complexity,
-		Message:    c.makeMessage(pos.Filename, pos.Line, pos.Column, v.complexity, stmt.Cond, fset),
+		Message:    c.makeMessage(v.complexity, stmt.Cond, fset),
 	})
 }
 
@@ -127,18 +127,13 @@ func (v *visitor) incComplexity(n *ast.IfStmt) {
 	}
 }
 
-func (c *Checker) makeMessage(file string, line, col, complexity int, cond ast.Expr, fset *token.FileSet) string {
+func (c *Checker) makeMessage(complexity int, cond ast.Expr, fset *token.FileSet) string {
 	p := &printer.Config{}
 	b := new(bytes.Buffer)
 	if err := p.Fprint(b, fset, cond); err != nil {
 		c.debug("failed to convert condition into string: %v", err)
 	}
-	msg := fmt.Sprintf("`if %s` is nested (complexity: %d)", b.String(), complexity)
-	return errformat(file, line, col, msg)
-}
-
-func errformat(file string, line, col int, msg string) string {
-	return fmt.Sprintf("%s:%d:%d: %s", file, line, col, msg)
+	return fmt.Sprintf("`if %s` is deeply nested (complexity: %d)", b.String(), complexity)
 }
 
 // DebugMode makes it possible to emit debug logs.

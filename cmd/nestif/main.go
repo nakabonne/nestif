@@ -28,9 +28,14 @@ import (
 
 var (
 	flagSet = flag.NewFlagSet("nestif", flag.ContinueOnError)
-	usage   = func() {
+
+	usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: nestif [<flag> ...] <Go files or directories or packages> ...")
 		flagSet.PrintDefaults()
+	}
+
+	errformat = func(file string, line, col int, msg string) string {
+		return fmt.Sprintf("%s:%d:%d: %s", file, line, col, msg)
 	}
 )
 
@@ -234,7 +239,7 @@ func (a *app) write(issues []nestif.Issue) {
 		if i >= a.top {
 			return
 		}
-		fmt.Fprintln(a.stdout, issue.Message)
+		fmt.Fprintln(a.stdout, errformat(issue.Pos.Filename, issue.Pos.Line, issue.Pos.Column, issue.Message))
 	}
 }
 
