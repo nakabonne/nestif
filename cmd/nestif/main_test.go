@@ -1,4 +1,4 @@
-// Copyright 2020 Ryo Nakao <nakabonne@gmail.com>.
+// Copyright 2020 Ryo Nakao <ryo@nakao.dev>.
 //
 // All rights reserved.
 // Use of this source code is governed by a BSD-style
