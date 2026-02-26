@@ -110,9 +110,9 @@ if condition1 {
     if condition2 { // +1
         if condition3 { // +2
         } else if condition4 { // +1
-	} else { // +1
-	    if condition5 { // +3
-	    }
+        } else { // +1
+            if condition5 { // +3
+            }
         }
     }
 }
